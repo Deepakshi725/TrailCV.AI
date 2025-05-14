@@ -43,4 +43,25 @@ export const api = {
     
     return response.json();
   },
+
+  async extractPdfText(file: File): Promise<string> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${API_URL}/api/upload/extract-text`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to extract text from PDF');
+    }
+
+    const data = await response.json();
+    return data.text;
+  },
 }; 

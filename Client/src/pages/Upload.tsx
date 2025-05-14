@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
-import { Upload, FileText, X, Loader } from "lucide-react";
+import { Upload, FileText, X, Loader, Copy, Check } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
+import { api } from "@/lib/api";
 
 export default function UploadPage() {
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -16,6 +17,7 @@ export default function UploadPage() {
   const [jdText, setJdText] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [copiedType, setCopiedType] = useState<'resume' | 'jd' | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -28,17 +30,17 @@ export default function UploadPage() {
     setIsDragging(false);
   };
 
-  const handleDrop = (e: DragEvent<HTMLDivElement>, type: 'resume' | 'jd') => {
+  const handleDrop = async (e: DragEvent<HTMLDivElement>, type: 'resume' | 'jd') => {
     e.preventDefault();
     setIsDragging(false);
     
     const droppedFile = e.dataTransfer.files?.[0];
     if (droppedFile) {
-      handleFileUpload(droppedFile, type);
+      await handleFileUpload(droppedFile, type);
     }
   };
 
-  const handleFileUpload = (uploadedFile: File, type: 'resume' | 'jd') => {
+  const handleFileUpload = async (uploadedFile: File, type: 'resume' | 'jd') => {
     // Check file type
     const validTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
     if (!validTypes.includes(uploadedFile.type)) {
@@ -50,30 +52,74 @@ export default function UploadPage() {
       return;
     }
     
-    if (type === 'resume') {
-      setResumeFile(uploadedFile);
-    } else {
-      setJdFile(uploadedFile);
+    try {
+      setIsLoading(true);
+      let extractedText = '';
+      
+      if (uploadedFile.type === 'application/pdf') {
+        extractedText = await api.extractPdfText(uploadedFile);
+      }
+      
+      if (type === 'resume') {
+        setResumeFile(uploadedFile);
+        if (extractedText) {
+          setResumeText(extractedText);
+        }
+      } else {
+        setJdFile(uploadedFile);
+        if (extractedText) {
+          setJdText(extractedText);
+        }
+      }
+      
+      toast({
+        title: "File uploaded successfully",
+        description: `${uploadedFile.name} is ready for analysis.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to process file",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
-    
-    toast({
-      title: "File uploaded successfully",
-      description: `${uploadedFile.name} is ready for analysis.`,
-    });
   };
 
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'resume' | 'jd') => {
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'resume' | 'jd') => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      handleFileUpload(selectedFile, type);
+      await handleFileUpload(selectedFile, type);
     }
   };
 
   const removeFile = (type: 'resume' | 'jd') => {
     if (type === 'resume') {
       setResumeFile(null);
+      setResumeText("");
     } else {
       setJdFile(null);
+      setJdText("");
+    }
+  };
+
+  const handleCopy = async (type: 'resume' | 'jd') => {
+    const textToCopy = type === 'resume' ? resumeText : jdText;
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      setCopiedType(type);
+      setTimeout(() => setCopiedType(null), 2000);
+      toast({
+        title: "Copied to clipboard",
+        description: "The text has been copied to your clipboard.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to copy text to clipboard",
+        variant: "destructive"
+      });
     }
   };
 
@@ -136,13 +182,28 @@ export default function UploadPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.3 }}
+                className="relative"
               >
                 <Textarea 
                   placeholder={`Enter your ${type === 'resume' ? 'resume' : 'job description'} here...`}
-                  className="min-h-[200px] bg-secondary/50 focus:ring-2 focus:ring-primary/20 transition-all duration-300"
+                  className="min-h-[200px] bg-secondary/50 focus:ring-2 focus:ring-primary/20 transition-all duration-300 pr-12"
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                 />
+                {text && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-2 right-2 hover:bg-primary/10"
+                    onClick={() => handleCopy(type)}
+                  >
+                    {copiedType === type ? (
+                      <Check className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
               </motion.div>
             </TabsContent>
             
@@ -226,15 +287,32 @@ export default function UploadPage() {
                           {(file.size / 1024).toFixed(2)} KB
                         </p>
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => removeFile(type)}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors duration-300"
-                      >
-                        <X className="mr-2 h-4 w-4" />
-                        Remove
-                      </Button>
+                      <div className="flex gap-2 justify-center">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => removeFile(type)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors duration-300"
+                        >
+                          <X className="mr-2 h-4 w-4" />
+                          Remove
+                        </Button>
+                        {text && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleCopy(type)}
+                            className="hover:bg-primary/10 transition-colors duration-300"
+                          >
+                            {copiedType === type ? (
+                              <Check className="mr-2 h-4 w-4 text-green-500" />
+                            ) : (
+                              <Copy className="mr-2 h-4 w-4" />
+                            )}
+                            Copy Text
+                          </Button>
+                        )}
+                      </div>
                     </motion.div>
                   )}
                 </div>

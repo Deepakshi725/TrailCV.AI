@@ -1,0 +1,10 @@
+This is a test resume.
+
+Skills:
+- JavaScript
+- React
+- Node.js
+
+Experience:
+- Frontend Developer at Tech Corp (2020-2023)
+- Full Stack Developer at Startup Inc (2018-2020)

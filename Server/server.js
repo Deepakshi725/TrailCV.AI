@@ -1,5 +1,6 @@
 import express from "express";
 import Router from "./routes.js";
+import uploadRouter from "./routes/upload.js";
 import { isConnected, connected } from "./db.js";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -23,6 +24,7 @@ app.get("/", (req, res) => {
     }
   });
   app.use(Router);
+  app.use('/api/upload', uploadRouter);
 
 // Connect to database before starting server
 await connected();
