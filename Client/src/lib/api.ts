@@ -44,11 +44,11 @@ export const api = {
     return response.json();
   },
 
-  async extractPdfText(file: File): Promise<string> {
+  async extractPdfText(file: File, type: 'resume' | 'jd'): Promise<{ text: string; analysisId: string }> {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_URL}/api/upload/extract-text`, {
+    const response = await fetch(`${API_URL}/api/upload/extract-text?type=${type}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -62,6 +62,45 @@ export const api = {
     }
 
     const data = await response.json();
-    return data.text;
+    return {
+      text: data.text,
+      analysisId: data.analysisId
+    };
+  },
+
+  async saveText(text: string, type: 'resume' | 'jd'): Promise<{ analysisId: string }> {
+    const response = await fetch(`${API_URL}/api/upload/extract-text?type=${type}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+      body: JSON.stringify({ text }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to save text');
+    }
+
+    const data = await response.json();
+    return {
+      analysisId: data.analysisId
+    };
+  },
+
+  async getAnalyses() {
+    const response = await fetch(`${API_URL}/api/upload/analyses`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to fetch analyses');
+    }
+
+    return response.json();
   },
 }; 

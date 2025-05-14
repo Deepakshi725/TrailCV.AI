@@ -21,7 +21,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const token = localStorage.getItem('token');
     if (token) {
       // Fetch user data from the backend
-      fetch('http://localhost:5000/me', {
+      fetch('http://localhost:5000/api/auth/me', {
         headers: {
           'Authorization': `Bearer ${token}`
         }

@@ -25,8 +25,14 @@ export default function Login() {
     try {
       const response = await api.login({ email, password });
       
-      // Store the token in localStorage
+      // Store the token and user info in localStorage
       localStorage.setItem('token', response.token);
+      localStorage.setItem('user', JSON.stringify({
+        id: response.user._id,
+        firstName: response.user.firstName,
+        lastName: response.user.lastName,
+        email: response.user.email
+      }));
       
       // Set user data
       setUser({

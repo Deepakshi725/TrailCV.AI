@@ -24,13 +24,22 @@ export default function Signup() {
     setIsLoading(true);
     
     try {
-      await api.signup({
+      const response = await api.signup({
         firstName,
         lastName,
         email,
         phoneNum: parseInt(phoneNum),
         password,
       });
+      
+      // Store the token and user info in localStorage
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('user', JSON.stringify({
+        id: response.user._id,
+        firstName: response.user.firstName,
+        lastName: response.user.lastName,
+        email: response.user.email
+      }));
       
       toast({
         title: "Account created successfully",
