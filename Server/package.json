@@ -1,0 +1,26 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "Backend for TrailCV.AI",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "nodemon server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [],
+  "author": "Kshitij Kotecha",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "framer-motion": "^12.11.1",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.14.3",
+    "moongoose": "^0.0.5",
+    "nodemon": "^3.1.10",
+    "react-router-dom": "^7.6.0"
+  }
+}
