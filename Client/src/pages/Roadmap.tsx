@@ -31,6 +31,7 @@ import {
   Video
 } from "lucide-react";
 import { getAnalysisFromStorage, getLearningResourcesForSkills } from '@/utils/resumeAnalyzer';
+import { motion } from "framer-motion";
 
 // Mock data for learning resources
 const certifiedCourses = [
@@ -146,6 +147,94 @@ async function isYouTubeVideoAvailable(url: string): Promise<boolean> {
   }
 }
 
+// --- Aurora, Grid, and Particles Effects (from Match/Suggestions) ---
+const AuroraEffect = () => (
+  <div className="fixed inset-0 -z-10 overflow-hidden">
+    <div className="absolute inset-0 bg-gradient-to-br from-black via-black to-black/95" />
+    {[...Array(5)].map((_, i) => (
+      <motion.div
+        key={i}
+        className="absolute inset-0"
+        style={{
+          background: `linear-gradient(${i * 45}deg, ${i % 2 === 0 ? 'rgba(128,0,255,0.4)' : 'rgba(0,255,255,0.4)'}, transparent)`,
+          filter: 'blur(40px)',
+        }}
+        animate={{
+          x: ['-50%', '150%'],
+          y: ['-50%', '150%'],
+          opacity: [0.3, 0.7, 0.3],
+          scale: [1, 1.2, 1],
+        }}
+        transition={{
+          duration: 20 + i * 5,
+          repeat: Infinity,
+          ease: "linear",
+          delay: i * 2,
+        }}
+      />
+    ))}
+  </div>
+);
+
+const GridOverlay = () => (
+  <div className="fixed inset-0 -z-10 opacity-15">
+    <motion.div
+      className="absolute inset-0"
+      style={{
+        backgroundImage: `
+          linear-gradient(rgba(var(--primary), 0.15) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(var(--primary), 0.15) 1px, transparent 1px)
+        `,
+        backgroundSize: '50px 50px',
+      }}
+      animate={{
+        backgroundPosition: ['0 0', '50px 50px'],
+      }}
+      transition={{
+        duration: 20,
+        repeat: Infinity,
+        ease: "linear",
+      }}
+    />
+  </div>
+);
+
+const ConnectedParticles = () => (
+  <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+    {[...Array(20)].map((_, i) => (
+      <motion.div
+        key={i}
+        className="absolute w-4 h-4 rounded-full"
+        style={{
+          background: `radial-gradient(circle, ${i % 2 === 0 ? 'rgba(128,0,255,0.6)' : 'rgba(0,255,255,0.6)'} 0%, transparent 70%)`,
+          boxShadow: `0 0 20px ${i % 2 === 0 ? 'rgba(128,0,255,0.4)' : 'rgba(0,255,255,0.4)'}`,
+        }}
+        initial={{
+          x: `${Math.random() * 100}%`,
+          y: `${Math.random() * 100}%`,
+          opacity: 0,
+          scale: 0,
+        }}
+        animate={{
+          y: [
+            `${Math.random() * 100}%`,
+            `${Math.random() * 100}%`,
+            `${Math.random() * 100}%`,
+          ],
+          opacity: [0.4, 0.8, 0.4],
+          scale: [1, 1.5, 1],
+        }}
+        transition={{
+          duration: Math.random() * 10 + 20,
+          repeat: Infinity,
+          ease: "linear",
+        }}
+      />
+    ))}
+  </div>
+);
+// --- End Effects ---
+
 function getResourceIcon(type: string) {
   switch (type) {
     case 'video': return <Video className="w-8 h-8 text-primary" />;
@@ -230,185 +319,210 @@ export default function RoadmapPage() {
     fetchResources();
   }, []);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
   return (
     <MainLayout>
-      <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-heading font-bold">Your Learning Roadmap</h1>
-          <p className="text-muted-foreground mt-2">
-            Personalized learning path to help you reach your career goals
-          </p>
+      <AuroraEffect />
+      <GridOverlay />
+      <ConnectedParticles />
+      {/* Hero Section */}
+      <div className="relative pt-20 pb-10 px-4 sm:px-8 bg-gradient-to-br from-black via-black/80 to-primary/10 rounded-b-3xl shadow-lg overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none z-0">
+          <div className="absolute left-1/2 top-0 w-[600px] h-[600px] -translate-x-1/2 bg-primary/20 rounded-full blur-3xl opacity-40" />
         </div>
-
-        {loading ? (
-          <div className="flex flex-col items-center justify-center min-h-[300px]">
-            <span className="text-primary font-medium text-lg mb-2">Finding the best resources for you...</span>
-            <div className="w-16 h-16 rounded-full border-4 border-primary/30 border-t-primary animate-spin mb-4" />
+        <div className="relative z-10 max-w-4xl mx-auto text-center">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center mb-2 shadow-lg">
+              <BookOpen className="w-8 h-8 text-primary animate-bounce" />
+            </div>
+            <h1 className="text-4xl md:text-5xl font-heading font-bold bg-gradient-to-r from-primary via-cyan-400 to-primary bg-clip-text text-transparent drop-shadow-lg">
+              Your Learning Roadmap
+            </h1>
+            <p className="text-muted-foreground mt-2 text-lg max-w-2xl mx-auto">
+              Personalized learning path to help you reach your career goals
+            </p>
           </div>
-        ) : error ? (
-          <Card className="bg-destructive/10 border-destructive/20">
-            <CardContent className="pt-6">
-              <p className="text-destructive">{error}</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            {/* Skills to Learn Section (dynamic) */}
-            {skillsToLearn.length > 0 && (
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold mb-2 text-primary">Skills to Learn</h2>
-                <div className="flex flex-wrap gap-2">
-                  {skillsToLearn.map((skill, idx) => (
-                    <span key={idx} className="px-3 py-1 rounded-full bg-primary/20 text-primary text-sm border border-primary/30">
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
+        </div>
+      </div>
 
-            <Tabs defaultValue="certified" value={selectedTab} onValueChange={setSelectedTab}>
-              <div className="flex justify-between items-center mb-6">
-                <TabsList className="grid grid-cols-2 w-auto">
-                  <TabsTrigger value="certified">Certified Courses</TabsTrigger>
-                  <TabsTrigger value="free">Free Resources</TabsTrigger>
-                </TabsList>
-                <div className="hidden sm:flex items-center gap-2">
-                  <Badge variant="outline" className="bg-secondary text-primary px-3 py-1 text-xs">
-                    <Calendar className="w-3 h-3 mr-1" />
-                    Updated today
-                  </Badge>
-                </div>
+      {/* Main Content Card */}
+      <div className="max-w-6xl mx-auto mb-16 px-2 sm:px-0 mt-8">
+        <Card className="bg-black/60 border-primary/20 shadow-xl backdrop-blur-xl p-0 rounded-3xl relative">
+          <CardContent className="py-10 px-2 sm:px-10 space-y-8">
+            {loading ? (
+              <div className="flex flex-col items-center justify-center min-h-[300px]">
+                <span className="text-primary font-medium text-lg mb-2">Finding the best resources for you...</span>
+                <div className="w-16 h-16 rounded-full border-4 border-primary/30 border-t-primary animate-spin mb-4" />
               </div>
+            ) : error ? (
+              <Card className="bg-destructive/10 border-destructive/20">
+                <CardContent className="pt-6">
+                  <p className="text-destructive">{error}</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                {/* Skills to Learn Section (dynamic) */}
+                {skillsToLearn.length > 0 && (
+                  <div className="mb-6">
+                    <h2 className="text-xl font-semibold mb-2 text-primary">Skills to Learn</h2>
+                    <div className="flex flex-wrap gap-2">
+                      {skillsToLearn.map((skill, idx) => (
+                        <span key={idx} className="px-3 py-1 rounded-full bg-primary/20 text-primary text-sm border border-primary/30">
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-              <TabsContent value="certified" className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {certifiedCourses.map((course, i) => (
-                    <Card key={i} className="bg-secondary/30 border-primary/20 overflow-hidden group hover:border-primary/40 transition-colors">
-                      <div className="relative h-36">
-                        <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent z-10"></div>
-                        <img 
-                          src={course.image} 
-                          alt={course.title} 
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                        {course.locked && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-20">
-                            <div className="text-center">
-                              <Lock className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                              <span className="text-sm text-muted-foreground">Premium Content</span>
+                <Tabs defaultValue="certified" value={selectedTab} onValueChange={setSelectedTab}>
+                  <div className="flex justify-between items-center mb-6">
+                    <TabsList className="grid grid-cols-2 w-auto">
+                      <TabsTrigger value="certified">Certified Courses</TabsTrigger>
+                      <TabsTrigger value="free">Free Resources</TabsTrigger>
+                    </TabsList>
+                    <div className="hidden sm:flex items-center gap-2">
+                      <Badge variant="outline" className="bg-secondary text-primary px-3 py-1 text-xs">
+                        <Calendar className="w-3 h-3 mr-1" />
+                        Updated today
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <TabsContent value="certified" className="space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {certifiedCourses.map((course, i) => (
+                        <Card key={i} className="bg-secondary/30 border-primary/20 overflow-hidden group hover:border-primary/40 transition-colors">
+                          <div className="relative h-36">
+                            <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent z-10"></div>
+                            <img 
+                              src={course.image} 
+                              alt={course.title} 
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                            {course.locked && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-20">
+                                <div className="text-center">
+                                  <Lock className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                                  <span className="text-sm text-muted-foreground">Premium Content</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <CardContent className="pt-4">
+                            <div className="flex justify-between items-start mb-1">
+                              <h3 className="font-medium line-clamp-2 pr-4">
+                                <a href={course.url} target="_blank" rel="noopener noreferrer" className="hover:underline text-primary">
+                                  {course.title}
+                                </a>
+                              </h3>
+                              <Badge className="bg-primary/20 text-primary border-none">
+                                {course.level}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground mb-3">
+                              {course.provider}
+                            </p>
+                            <div className="flex justify-between items-center mb-4">
+                              <div className="flex items-center text-yellow-500">
+                                <Star className="fill-yellow-500 w-4 h-4" />
+                                <span className="text-sm font-medium ml-1">{course.rating}</span>
+                              </div>
+                              <div className="flex items-center text-sm text-muted-foreground">
+                                <Clock className="w-4 h-4 mr-1" />
+                                {course.duration}
+                              </div>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium">{course.price}</span>
+                              <Button size="sm" variant="default" asChild>
+                                <a href={course.url} target="_blank" rel="noopener noreferrer">
+                                  Enroll Now
+                                </a>
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="free" className="space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {freeResources.map((resource, i) => (
+                        <Card key={i} className="bg-secondary/30 border-primary/20 overflow-hidden group hover:border-primary/40 transition-colors relative">
+                          <div className="relative h-36">
+                            <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent z-10"></div>
+                            {resource.image ? (
+                              <img 
+                                src={resource.image} 
+                                alt={resource.title} 
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex flex-col items-center justify-center bg-primary/10">
+                                {getResourceIcon(resource.type)}
+                                <span className="mt-2 text-primary font-semibold text-base text-center px-2 truncate w-full">
+                                  {resource.platform || resource.type}
+                                </span>
+                              </div>
+                            )}
+                            {/* Hover overlay */}
+                            <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20 bg-black/70">
+                              <span className="text-lg font-bold text-primary text-center px-4 mb-2 truncate w-full">{resource.title}</span>
+                              <a href={resource.url} target="_blank" rel="noopener noreferrer" className="w-32 py-2 rounded-full bg-primary/80 text-white font-semibold flex items-center justify-center gap-2 hover:bg-primary">
+                                Visit {resource.type.charAt(0).toUpperCase() + resource.type.slice(1)}
+                                <ExternalLink className="w-4 h-4" />
+                              </a>
                             </div>
                           </div>
-                        )}
-                      </div>
-                      <CardContent className="pt-4">
-                        <div className="flex justify-between items-start mb-1">
-                          <h3 className="font-medium line-clamp-2 pr-4">
-                            <a href={course.url} target="_blank" rel="noopener noreferrer" className="hover:underline text-primary">
-                              {course.title}
-                            </a>
-                          </h3>
-                          <Badge className="bg-primary/20 text-primary border-none">
-                            {course.level}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          {course.provider}
-                        </p>
-                        <div className="flex justify-between items-center mb-4">
-                          <div className="flex items-center text-yellow-500">
-                            <Star className="fill-yellow-500 w-4 h-4" />
-                            <span className="text-sm font-medium ml-1">{course.rating}</span>
-                          </div>
-                          <div className="flex items-center text-sm text-muted-foreground">
-                            <Clock className="w-4 h-4 mr-1" />
-                            {course.duration}
-                          </div>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium">{course.price}</span>
-                          <Button size="sm" variant="default" asChild>
-                            <a href={course.url} target="_blank" rel="noopener noreferrer">
-                              Enroll Now
-                            </a>
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="free" className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {freeResources.map((resource, i) => (
-                    <Card key={i} className="bg-secondary/30 border-primary/20 overflow-hidden group hover:border-primary/40 transition-colors relative">
-                      <div className="relative h-36">
-                        <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent z-10"></div>
-                        {resource.image ? (
-                          <img 
-                            src={resource.image} 
-                            alt={resource.title} 
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center bg-primary/10">
-                            {getResourceIcon(resource.type)}
-                            <span className="mt-2 text-primary font-semibold text-base text-center px-2 truncate w-full">
-                              {resource.platform || resource.type}
-                            </span>
-                          </div>
-                        )}
-                        {/* Hover overlay */}
-                        <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20 bg-black/70">
-                          <span className="text-lg font-bold text-primary text-center px-4 mb-2 truncate w-full">{resource.title}</span>
-                          <a href={resource.url} target="_blank" rel="noopener noreferrer" className="w-32 py-2 rounded-full bg-primary/80 text-white font-semibold flex items-center justify-center gap-2 hover:bg-primary">
-                            Visit {resource.type.charAt(0).toUpperCase() + resource.type.slice(1)}
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
-                        </div>
-                      </div>
-                      <CardContent className="pt-4">
-                        <div className="flex justify-between items-start mb-1">
-                          <h3 className="font-medium line-clamp-2">
-                            <a href={resource.url} target="_blank" rel="noopener noreferrer" className="hover:underline text-primary">
-                              {resource.title}
-                            </a>
-                          </h3>
-                          <Badge className="bg-secondary text-muted-foreground border-none capitalize">
-                            {resource.type}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          {resource.creator}
-                        </p>
-                        <div className="flex justify-between items-center mb-4">
-                          <div className="flex items-center text-sm">
-                            <BookOpen className="w-4 h-4 mr-1 text-muted-foreground" />
-                            <span>{resource.platform}</span>
-                          </div>
-                          <div className="flex items-center text-sm text-muted-foreground">
-                            <Clock className="w-4 h-4 mr-1" />
-                            {resource.duration}
-                          </div>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">{resource.views} views</span>
-                          <Button size="sm" variant="outline" className="gap-1" asChild>
-                            <a href={resource.url} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink className="w-4 h-4" />
-                              Watch
-                            </a>
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </TabsContent>
-            </Tabs>
-          </>
-        )}
+                          <CardContent className="pt-4">
+                            <div className="flex justify-between items-start mb-1">
+                              <h3 className="font-medium line-clamp-2">
+                                <a href={resource.url} target="_blank" rel="noopener noreferrer" className="hover:underline text-primary">
+                                  {resource.title}
+                                </a>
+                              </h3>
+                              <Badge className="bg-secondary text-muted-foreground border-none capitalize">
+                                {resource.type}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground mb-3">
+                              {resource.creator}
+                            </p>
+                            <div className="flex justify-between items-center mb-4">
+                              <div className="flex items-center text-sm">
+                                <BookOpen className="w-4 h-4 mr-1 text-muted-foreground" />
+                                <span>{resource.platform}</span>
+                              </div>
+                              <div className="flex items-center text-sm text-muted-foreground">
+                                <Clock className="w-4 h-4 mr-1" />
+                                {resource.duration}
+                              </div>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-muted-foreground">{resource.views} views</span>
+                              <Button size="sm" variant="outline" className="gap-1" asChild>
+                                <a href={resource.url} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink className="w-4 h-4" />
+                                  Watch
+                                </a>
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </MainLayout>
   );
