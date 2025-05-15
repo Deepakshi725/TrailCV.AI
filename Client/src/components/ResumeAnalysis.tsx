@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAnalysisFromStorage } from '@/utils/resumeAnalyzer';
-import { Loader } from 'lucide-react';
+import { Loader, CheckCircle, XCircle, TrendingUp } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface AnalysisResult {
   matched_keywords: string[];
@@ -32,7 +33,12 @@ export function ResumeAnalysis() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader className="h-8 w-8 animate-spin text-primary" />
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+        >
+          <Loader className="h-8 w-8 text-primary" />
+        </motion.div>
       </div>
     );
   }
@@ -60,65 +66,106 @@ export function ResumeAnalysis() {
   return (
     <div className="space-y-6">
       {/* Matched Keywords */}
-      <Card className="bg-secondary/30 border-primary/20">
-        <CardHeader>
-          <CardTitle className="text-xl font-heading font-semibold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            ✅ Matched Keywords
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {analysis.matched_keywords.map((keyword, index) => (
-              <span
-                key={index}
-                className="px-3 py-1 rounded-full bg-primary/20 text-primary text-sm"
-              >
-                {keyword}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <Card className="bg-secondary/30 border-primary/20 hover:shadow-lg transition-all duration-300 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="text-xl font-heading font-semibold flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-500" />
+              <span className="bg-gradient-to-r from-green-500 to-green-400 bg-clip-text text-transparent">
+                Matched Keywords
               </span>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {analysis.matched_keywords.map((keyword, index) => (
+                <motion.span
+                  key={index}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                  className="px-3 py-1 rounded-full bg-green-500/20 text-green-500 text-sm border border-green-500/30"
+                >
+                  {keyword}
+                </motion.span>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* Missing Keywords */}
-      <Card className="bg-secondary/30 border-primary/20">
-        <CardHeader>
-          <CardTitle className="text-xl font-heading font-semibold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            ❌ Missing Keywords
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {analysis.missing_keywords.map((keyword, index) => (
-              <span
-                key={index}
-                className="px-3 py-1 rounded-full bg-destructive/20 text-destructive text-sm"
-              >
-                {keyword}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+      >
+        <Card className="bg-secondary/30 border-primary/20 hover:shadow-lg transition-all duration-300 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="text-xl font-heading font-semibold flex items-center gap-2">
+              <XCircle className="h-5 w-5 text-red-500" />
+              <span className="bg-gradient-to-r from-red-500 to-red-400 bg-clip-text text-transparent">
+                Missing Keywords
               </span>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {analysis.missing_keywords.map((keyword, index) => (
+                <motion.span
+                  key={index}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                  className="px-3 py-1 rounded-full bg-red-500/20 text-red-500 text-sm border border-red-500/30"
+                >
+                  {keyword}
+                </motion.span>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* Recommendations */}
-      <Card className="bg-secondary/30 border-primary/20">
-        <CardHeader>
-          <CardTitle className="text-xl font-heading font-semibold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            📈 Recommendations
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-3">
-            {analysis.recommendations.map((recommendation, index) => (
-              <li key={index} className="flex items-start gap-2">
-                <span className="text-primary mt-1">•</span>
-                <span className="text-foreground">{recommendation}</span>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.4 }}
+      >
+        <Card className="bg-secondary/30 border-primary/20 hover:shadow-lg transition-all duration-300 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="text-xl font-heading font-semibold flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                Recommendations
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-3">
+              {analysis.recommendations.map((recommendation, index) => (
+                <motion.li
+                  key={index}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                  className="flex items-start gap-2 group"
+                >
+                  <span className="text-primary mt-1 group-hover:scale-110 transition-transform duration-300">•</span>
+                  <span className="text-foreground group-hover:text-primary/80 transition-colors duration-300">
+                    {recommendation}
+                  </span>
+                </motion.li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   );
 } 
