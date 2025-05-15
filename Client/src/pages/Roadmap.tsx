@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MainLayout } from "@/components/MainLayout";
 import { Button } from "@/components/ui/button";
 import { 
@@ -26,8 +25,12 @@ import {
   ExternalLink,
   Lock,
   Play,
-  Star
+  Star,
+  FileText,
+  Globe,
+  Video
 } from "lucide-react";
+import { getAnalysisFromStorage, getLearningResourcesForSkills } from '@/utils/resumeAnalyzer';
 
 // Mock data for learning resources
 const certifiedCourses = [
@@ -128,8 +131,104 @@ const roadmapSteps = [
   }
 ];
 
+// Helper to check if a YouTube video is available
+async function isYouTubeVideoAvailable(url: string): Promise<boolean> {
+  if (!url.includes('youtube.com') && !url.includes('youtu.be')) return true;
+  try {
+    const videoIdMatch = url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/);
+    const videoId = videoIdMatch ? videoIdMatch[1] : null;
+    if (!videoId) return false;
+    const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
+    const res = await fetch(oembedUrl);
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+function getResourceIcon(type: string) {
+  switch (type) {
+    case 'video': return <Video className="w-8 h-8 text-primary" />;
+    case 'article': return <FileText className="w-8 h-8 text-primary" />;
+    case 'blog': return <BookOpen className="w-8 h-8 text-primary" />;
+    case 'docs': return <Globe className="w-8 h-8 text-primary" />;
+    default: return <ExternalLink className="w-8 h-8 text-primary" />;
+  }
+}
+
 export default function RoadmapPage() {
-  const [selectedTab, setSelectedTab] = useState("progress");
+  const [selectedTab, setSelectedTab] = useState("certified");
+  const [skillsToLearn, setSkillsToLearn] = useState<string[]>([]);
+  const [certifiedCourses, setCertifiedCourses] = useState<any[]>([]);
+  const [freeResources, setFreeResources] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchResources() {
+      setLoading(true);
+      setError(null);
+      try {
+        const analysis = await getAnalysisFromStorage();
+        if (!analysis || !Array.isArray(analysis.missing_keywords) || analysis.missing_keywords.length === 0) {
+          setError("No missing skills found. Please analyze your resume first.");
+          setSkillsToLearn([]);
+          setCertifiedCourses([]);
+          setFreeResources([]);
+        } else {
+          const resources = await getLearningResourcesForSkills(analysis.missing_keywords);
+          setSkillsToLearn(resources.skillsToLearn);
+          setCertifiedCourses(resources.certifiedCourses);
+
+          // Validate free resources (YouTube videos)
+          const validFreeResources: any[] = [];
+          for (const resource of resources.freeResources) {
+            let isValid = await isYouTubeVideoAvailable(resource.url);
+            let retryCount = 0;
+            // If not valid, try to get a new video for the same topic (up to 2 retries)
+            while (!isValid && retryCount < 2) {
+              const retryPrompt = `Find a currently available YouTube video for the topic: '${resource.title}' or skill: '${resource.platform}'. Return a JSON object with title, creator, duration, platform, views, image, and url. Only return a video that is available now.`;
+              try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.NEXT_PUBLIC_GEMINI_API_KEY}`,
+                  {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      contents: [{ parts: [{ text: retryPrompt }] }]
+                    })
+                  }
+                );
+                if (response.ok) {
+                  const data = await response.json();
+                  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                  const jsonMatch = text.match(/\{[\s\S]*\}/);
+                  if (jsonMatch) {
+                    const newResource = JSON.parse(jsonMatch[0]);
+                    isValid = await isYouTubeVideoAvailable(newResource.url);
+                    if (isValid) {
+                      validFreeResources.push(newResource);
+                      break;
+                    }
+                  }
+                }
+              } catch {}
+              retryCount++;
+            }
+            if (isValid) validFreeResources.push(resource);
+          }
+          setFreeResources(validFreeResources);
+        }
+      } catch (err) {
+        setError("Failed to load learning resources. Try again.");
+        setSkillsToLearn([]);
+        setCertifiedCourses([]);
+        setFreeResources([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchResources();
+  }, []);
 
   return (
     <MainLayout>
@@ -141,211 +240,175 @@ export default function RoadmapPage() {
           </p>
         </div>
 
-        <Tabs defaultValue="progress" value={selectedTab} onValueChange={setSelectedTab}>
-          <div className="flex justify-between items-center mb-6">
-            <TabsList className="grid grid-cols-3 w-auto">
-              <TabsTrigger value="progress">Progress</TabsTrigger>
-              <TabsTrigger value="certified">Certified Courses</TabsTrigger>
-              <TabsTrigger value="free">Free Resources</TabsTrigger>
-            </TabsList>
-            
-            <div className="hidden sm:flex items-center gap-2">
-              <Badge variant="outline" className="bg-secondary text-primary px-3 py-1 text-xs">
-                <Calendar className="w-3 h-3 mr-1" />
-                Updated today
-              </Badge>
-            </div>
+        {loading ? (
+          <div className="flex flex-col items-center justify-center min-h-[300px]">
+            <span className="text-primary font-medium text-lg mb-2">Finding the best resources for you...</span>
+            <div className="w-16 h-16 rounded-full border-4 border-primary/30 border-t-primary animate-spin mb-4" />
           </div>
-
-          <TabsContent value="progress" className="space-y-8">
-            <Card className="border-primary/20 bg-secondary/30">
-              <CardHeader>
-                <CardTitle className="font-heading">Progress Overview</CardTitle>
-                <CardDescription>
-                  Your personalized learning roadmap based on job requirements
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col md:flex-row gap-4 mb-6">
-                  <div className="flex-1 glass-card rounded-xl p-6 text-center">
-                    <div className="text-4xl font-bold text-primary">25%</div>
-                    <div className="text-sm text-muted-foreground mt-2">Overall Progress</div>
-                  </div>
-                  <div className="flex-1 glass-card rounded-xl p-6 text-center">
-                    <div className="text-4xl font-bold text-primary">1/4</div>
-                    <div className="text-sm text-muted-foreground mt-2">Steps Completed</div>
-                  </div>
-                  <div className="flex-1 glass-card rounded-xl p-6 text-center">
-                    <div className="text-4xl font-bold text-primary">3</div>
-                    <div className="text-sm text-muted-foreground mt-2">Days Streak</div>
-                  </div>
-                </div>
-                
-                <div className="space-y-6">
-                  {roadmapSteps.map((step) => (
-                    <div 
-                      key={step.id} 
-                      className={`glass-card rounded-xl p-6 transition-all ${
-                        step.status === "completed" ? "border-green-500/30" :
-                        step.status === "in-progress" ? "border-primary/30 glow" : ""
-                      }`}
-                    >
-                      <div className="flex justify-between items-center mb-2">
-                        <div className="flex items-center">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 ${
-                            step.status === "completed" ? "bg-green-500/20 text-green-500" :
-                            step.status === "in-progress" ? "bg-primary/20 text-primary" :
-                            "bg-secondary text-muted-foreground"
-                          }`}>
-                            {step.status === "completed" ? (
-                              <Check className="w-4 h-4" />
-                            ) : (
-                              <span>{step.id}</span>
-                            )}
-                          </div>
-                          <h3 className="text-lg font-medium">{step.title}</h3>
-                        </div>
-                        <Badge variant={
-                          step.status === "completed" ? "outline" :
-                          step.status === "in-progress" ? "secondary" : "outline"
-                        } className={
-                          step.status === "completed" ? "bg-green-500/10 text-green-500 border-green-500/30" :
-                          step.status === "in-progress" ? "bg-primary/10 text-primary border-primary/30" :
-                          "bg-secondary text-muted-foreground"
-                        }>
-                          {step.status === "completed" ? "Completed" :
-                           step.status === "in-progress" ? "In Progress" : "Not Started"}
-                        </Badge>
-                      </div>
-                      
-                      <p className="text-muted-foreground mb-4 ml-11">{step.description}</p>
-                      
-                      <div className="ml-11 space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>Progress</span>
-                          <span>{step.progress}%</span>
-                        </div>
-                        <Progress value={step.progress} className="h-2" />
-                      </div>
-                    </div>
+        ) : error ? (
+          <Card className="bg-destructive/10 border-destructive/20">
+            <CardContent className="pt-6">
+              <p className="text-destructive">{error}</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            {/* Skills to Learn Section (dynamic) */}
+            {skillsToLearn.length > 0 && (
+              <div className="mb-6">
+                <h2 className="text-xl font-semibold mb-2 text-primary">Skills to Learn</h2>
+                <div className="flex flex-wrap gap-2">
+                  {skillsToLearn.map((skill, idx) => (
+                    <span key={idx} className="px-3 py-1 rounded-full bg-primary/20 text-primary text-sm border border-primary/30">
+                      {skill}
+                    </span>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+              </div>
+            )}
 
-          <TabsContent value="certified" className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {certifiedCourses.map((course) => (
-                <Card key={course.id} className="bg-secondary/30 border-primary/20 overflow-hidden group hover:border-primary/40 transition-colors">
-                  <div className="relative h-36">
-                    <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent z-10"></div>
-                    <img 
-                      src={course.image} 
-                      alt={course.title} 
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                    {course.locked && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-20">
-                        <div className="text-center">
-                          <Lock className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                          <span className="text-sm text-muted-foreground">Premium Content</span>
+            <Tabs defaultValue="certified" value={selectedTab} onValueChange={setSelectedTab}>
+              <div className="flex justify-between items-center mb-6">
+                <TabsList className="grid grid-cols-2 w-auto">
+                  <TabsTrigger value="certified">Certified Courses</TabsTrigger>
+                  <TabsTrigger value="free">Free Resources</TabsTrigger>
+                </TabsList>
+                <div className="hidden sm:flex items-center gap-2">
+                  <Badge variant="outline" className="bg-secondary text-primary px-3 py-1 text-xs">
+                    <Calendar className="w-3 h-3 mr-1" />
+                    Updated today
+                  </Badge>
+                </div>
+              </div>
+
+              <TabsContent value="certified" className="space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {certifiedCourses.map((course, i) => (
+                    <Card key={i} className="bg-secondary/30 border-primary/20 overflow-hidden group hover:border-primary/40 transition-colors">
+                      <div className="relative h-36">
+                        <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent z-10"></div>
+                        <img 
+                          src={course.image} 
+                          alt={course.title} 
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                        {course.locked && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-20">
+                            <div className="text-center">
+                              <Lock className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                              <span className="text-sm text-muted-foreground">Premium Content</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <CardContent className="pt-4">
+                        <div className="flex justify-between items-start mb-1">
+                          <h3 className="font-medium line-clamp-2 pr-4">
+                            <a href={course.url} target="_blank" rel="noopener noreferrer" className="hover:underline text-primary">
+                              {course.title}
+                            </a>
+                          </h3>
+                          <Badge className="bg-primary/20 text-primary border-none">
+                            {course.level}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          {course.provider}
+                        </p>
+                        <div className="flex justify-between items-center mb-4">
+                          <div className="flex items-center text-yellow-500">
+                            <Star className="fill-yellow-500 w-4 h-4" />
+                            <span className="text-sm font-medium ml-1">{course.rating}</span>
+                          </div>
+                          <div className="flex items-center text-sm text-muted-foreground">
+                            <Clock className="w-4 h-4 mr-1" />
+                            {course.duration}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium">{course.price}</span>
+                          <Button size="sm" variant="default" asChild>
+                            <a href={course.url} target="_blank" rel="noopener noreferrer">
+                              Enroll Now
+                            </a>
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="free" className="space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {freeResources.map((resource, i) => (
+                    <Card key={i} className="bg-secondary/30 border-primary/20 overflow-hidden group hover:border-primary/40 transition-colors relative">
+                      <div className="relative h-36">
+                        <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent z-10"></div>
+                        {resource.image ? (
+                          <img 
+                            src={resource.image} 
+                            alt={resource.title} 
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-primary/10">
+                            {getResourceIcon(resource.type)}
+                            <span className="mt-2 text-primary font-semibold text-base text-center px-2 truncate w-full">
+                              {resource.platform || resource.type}
+                            </span>
+                          </div>
+                        )}
+                        {/* Hover overlay */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20 bg-black/70">
+                          <span className="text-lg font-bold text-primary text-center px-4 mb-2 truncate w-full">{resource.title}</span>
+                          <a href={resource.url} target="_blank" rel="noopener noreferrer" className="w-32 py-2 rounded-full bg-primary/80 text-white font-semibold flex items-center justify-center gap-2 hover:bg-primary">
+                            Visit {resource.type.charAt(0).toUpperCase() + resource.type.slice(1)}
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
                         </div>
                       </div>
-                    )}
-                  </div>
-                  
-                  <CardContent className="pt-4">
-                    <div className="flex justify-between items-start mb-1">
-                      <h3 className="font-medium line-clamp-2 pr-4">{course.title}</h3>
-                      <Badge className="bg-primary/20 text-primary border-none">
-                        {course.level}
-                      </Badge>
-                    </div>
-                    
-                    <p className="text-sm text-muted-foreground mb-3">
-                      {course.provider}
-                    </p>
-                    
-                    <div className="flex justify-between items-center mb-4">
-                      <div className="flex items-center text-yellow-500">
-                        <Star className="fill-yellow-500 w-4 h-4" />
-                        <span className="text-sm font-medium ml-1">{course.rating}</span>
-                      </div>
-                      
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <Clock className="w-4 h-4 mr-1" />
-                        {course.duration}
-                      </div>
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium">{course.price}</span>
-                      <Button size="sm" variant={course.locked ? "outline" : "default"}>
-                        {course.locked ? "Unlock" : "Enroll Now"}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="free" className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {freeResources.map((resource) => (
-                <Card key={resource.id} className="bg-secondary/30 border-primary/20 overflow-hidden group hover:border-primary/40 transition-colors">
-                  <div className="relative h-36">
-                    <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent z-10"></div>
-                    <img 
-                      src={resource.image} 
-                      alt={resource.title} 
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                      <div className="w-16 h-16 rounded-full bg-primary/80 flex items-center justify-center cursor-pointer">
-                        <Play className="w-8 h-8 text-white" />
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <CardContent className="pt-4">
-                    <div className="flex justify-between items-start mb-1">
-                      <h3 className="font-medium line-clamp-2">{resource.title}</h3>
-                      <Badge className="bg-secondary text-muted-foreground border-none">
-                        FREE
-                      </Badge>
-                    </div>
-                    
-                    <p className="text-sm text-muted-foreground mb-3">
-                      {resource.creator}
-                    </p>
-                    
-                    <div className="flex justify-between items-center mb-4">
-                      <div className="flex items-center text-sm">
-                        <BookOpen className="w-4 h-4 mr-1 text-muted-foreground" />
-                        <span>{resource.platform}</span>
-                      </div>
-                      
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <Clock className="w-4 h-4 mr-1" />
-                        {resource.duration}
-                      </div>
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">{resource.views} views</span>
-                      <Button size="sm" variant="outline" className="gap-1">
-                        <ExternalLink className="w-4 h-4" />
-                        Watch
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-        </Tabs>
+                      <CardContent className="pt-4">
+                        <div className="flex justify-between items-start mb-1">
+                          <h3 className="font-medium line-clamp-2">
+                            <a href={resource.url} target="_blank" rel="noopener noreferrer" className="hover:underline text-primary">
+                              {resource.title}
+                            </a>
+                          </h3>
+                          <Badge className="bg-secondary text-muted-foreground border-none capitalize">
+                            {resource.type}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          {resource.creator}
+                        </p>
+                        <div className="flex justify-between items-center mb-4">
+                          <div className="flex items-center text-sm">
+                            <BookOpen className="w-4 h-4 mr-1 text-muted-foreground" />
+                            <span>{resource.platform}</span>
+                          </div>
+                          <div className="flex items-center text-sm text-muted-foreground">
+                            <Clock className="w-4 h-4 mr-1" />
+                            {resource.duration}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">{resource.views} views</span>
+                          <Button size="sm" variant="outline" className="gap-1" asChild>
+                            <a href={resource.url} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="w-4 h-4" />
+                              Watch
+                            </a>
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+            </Tabs>
+          </>
+        )}
       </div>
     </MainLayout>
   );
