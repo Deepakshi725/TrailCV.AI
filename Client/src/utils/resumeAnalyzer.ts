@@ -1,7 +1,12 @@
+interface Suggestion {
+  explanation: string;
+  snippet: string;
+}
+
 interface AnalysisResult {
   matched_keywords: string[];
   missing_keywords: string[];
-  recommendations: string[];
+  recommendations: Suggestion[];
 }
 
 const GEMINI_API_KEY = 'AIzaSyDK0MN67mdl6-RdQaYr4Vadgfwg_JXU-AQ';
@@ -12,7 +17,9 @@ async function callGeminiAPI(resumeText: string, jobDescriptionText: string): Pr
   const prompt = `Analyze the following resume and job description. Return a JSON object with:
 1. matched_keywords: Array of important technical or role-specific terms present in both
 2. missing_keywords: Array of relevant terms from the job description not found in the resume
-3. recommendations: Array of short, impactful recommendations to improve the resume based on missing keywords
+3. recommendations: Array of objects, each with:
+   - explanation: a short, actionable explanation of what to add or improve in the resume
+   - snippet: a ready-to-copy, resume-optimized text block that the user can paste directly into their resume
 
 Resume:
 ${resumeText}
@@ -20,7 +27,18 @@ ${resumeText}
 Job Description:
 ${jobDescriptionText}
 
-Return ONLY the JSON object, no other text.`;
+Return ONLY the JSON object, no other text. Example for recommendations:
+[
+  {
+    "explanation": "Add a 'Skills' section to highlight proficiency in React and TypeScript.",
+    "snippet": "Skills: React.js, TypeScript, JavaScript, HTML5, CSS3"
+  },
+  {
+    "explanation": "Include a bullet point about leading UI/UX improvements.",
+    "snippet": "• Led UI/UX improvements that increased user engagement by 25% and reduced bounce rate by 15%."
+  }
+]
+`;
 
   try {
     const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {

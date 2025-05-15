@@ -3,8 +3,9 @@ import { MainLayout } from "@/components/MainLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { ResumeAnalysis } from "@/components/ResumeAnalysis";
 import { motion, AnimatePresence } from "framer-motion";
-import { Rocket, Brain, Sparkles, Zap, Target, CheckCircle2, LucideIcon } from "lucide-react";
+import { Rocket, Brain, Sparkles, Zap, Target, CheckCircle2, LucideIcon, ArrowRight, Lightbulb } from "lucide-react";
 import { getAnalysisFromStorage } from '@/utils/resumeAnalyzer';
+import { useNavigate } from "react-router-dom";
 
 // Enhanced Aurora effect with more dynamic colors
 const AuroraEffect = () => {
@@ -264,14 +265,131 @@ const FloatingMetrics = () => {
   );
 };
 
+// Path animation component
+const PathAnimation = ({ isVisible }: { isVisible: boolean }) => {
+  return (
+    <AnimatePresence>
+      {isVisible && (
+        <motion.div
+          className="fixed inset-0 pointer-events-none z-50"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          {/* Dots path */}
+          {[...Array(20)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-2 h-2 rounded-full bg-primary"
+              initial={{ 
+                x: "50%", 
+                y: "50%", 
+                opacity: 0,
+                scale: 0 
+              }}
+              animate={{ 
+                x: "100%", 
+                y: "50%", 
+                opacity: [0, 1, 0],
+                scale: [0, 1, 0]
+              }}
+              transition={{
+                duration: 1.5,
+                delay: i * 0.1,
+                ease: "easeInOut",
+              }}
+            />
+          ))}
+          
+          {/* Glowing trail */}
+          <motion.div
+            className="absolute w-1 h-1 bg-primary/50 blur-sm"
+            initial={{ 
+              x: "50%", 
+              y: "50%", 
+              opacity: 0,
+              scale: 0 
+            }}
+            animate={{ 
+              x: "100%", 
+              y: "50%", 
+              opacity: [0, 0.5, 0],
+              scale: [0, 2, 0]
+            }}
+            transition={{
+              duration: 1.5,
+              ease: "easeInOut",
+            }}
+          />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+// Loader animation for suggestions generation
+const SuggestionsLoader = ({ isVisible }: { isVisible: boolean }) => (
+  <AnimatePresence>
+    {isVisible && (
+      <motion.div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <motion.div
+          className="flex flex-col items-center gap-6"
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.8, opacity: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <motion.div
+            className="relative w-24 h-24 flex items-center justify-center"
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+          >
+            <span className="absolute inset-0 rounded-full border-4 border-primary/40 animate-pulse" />
+            <span className="absolute inset-4 rounded-full border-4 border-primary/60 animate-spin" />
+            <Sparkles className="w-12 h-12 text-primary drop-shadow-lg animate-bounce" />
+          </motion.div>
+          <motion.div
+            className="text-xl font-semibold text-primary text-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            Generating Tailored Suggestions...
+          </motion.div>
+        </motion.div>
+      </motion.div>
+    )}
+  </AnimatePresence>
+);
+
 export default function MatchPage() {
   const [showCelebration, setShowCelebration] = useState(false);
+  const [showPath, setShowPath] = useState(false);
+  const [showLoader, setShowLoader] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Show celebration animation after a short delay
     const timer = setTimeout(() => setShowCelebration(true), 1000);
     return () => clearTimeout(timer);
   }, []);
+
+  const handleSuggestionsClick = () => {
+    setShowLoader(true);
+    setTimeout(() => {
+      setShowLoader(false);
+      setShowPath(true);
+      setTimeout(() => {
+        navigate('/ai-suggestions');
+      }, 1500);
+    }, 2000);
+  };
 
   return (
     <MainLayout>
@@ -281,6 +399,8 @@ export default function MatchPage() {
       <AnimatePresence>
         {showCelebration && <SuccessCelebration />}
       </AnimatePresence>
+      <SuggestionsLoader isVisible={showLoader} />
+      <PathAnimation isVisible={showPath} />
       
       <div className="max-w-4xl mx-auto space-y-8 py-12 px-4 sm:px-6 lg:px-8">
         <motion.div 
@@ -340,6 +460,40 @@ export default function MatchPage() {
           transition={{ duration: 0.5, delay: 0.5 }}
         >
           <ResumeAnalysis />
+        </motion.div>
+
+        {/* Suggestions Button */}
+        <motion.div
+          className="flex justify-center mt-12"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
+        >
+          <motion.button
+            onClick={handleSuggestionsClick}
+            className="group relative px-8 py-4 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-xl overflow-hidden transition-all duration-300"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/20 to-primary/0"
+              animate={{
+                x: ['-100%', '100%'],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: "linear",
+              }}
+            />
+            <div className="relative flex items-center gap-3">
+              <Lightbulb className="w-5 h-5 text-primary" />
+              <span className="text-lg font-semibold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                View Tailored Suggestions
+              </span>
+              <ArrowRight className="w-5 h-5 text-primary group-hover:translate-x-1 transition-transform duration-300" />
+            </div>
+          </motion.button>
         </motion.div>
       </div>
     </MainLayout>

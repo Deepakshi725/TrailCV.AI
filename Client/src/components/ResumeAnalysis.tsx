@@ -4,10 +4,15 @@ import { getAnalysisFromStorage } from '@/utils/resumeAnalyzer';
 import { Loader, CheckCircle, XCircle, TrendingUp } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+interface Suggestion {
+  explanation: string;
+  snippet: string;
+}
+
 interface AnalysisResult {
   matched_keywords: string[];
   missing_keywords: string[];
-  recommendations: string[];
+  recommendations: Suggestion[];
 }
 
 export function ResumeAnalysis() {
@@ -158,7 +163,7 @@ export function ResumeAnalysis() {
                 >
                   <span className="text-primary mt-1 group-hover:scale-110 transition-transform duration-300">•</span>
                   <span className="text-foreground group-hover:text-primary/80 transition-colors duration-300">
-                    {recommendation}
+                    {recommendation.explanation}
                   </span>
                 </motion.li>
               ))}
