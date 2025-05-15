@@ -310,24 +310,32 @@ export default function UploadPage() {
     }
     setIsLoading(true);
     try {
+      // Save to localStorage first
+      const analysisData = {
+        resume: {
+          text: resumeText.trim(),
+          fileType: resumeFile?.type || 'text/plain',
+          fileName: resumeFile?.name || 'manual-input.txt'
+        },
+        jobDescription: {
+          text: jdText.trim(),
+          fileType: jdFile?.type || 'text/plain',
+          fileName: jdFile?.name || 'manual-input.txt'
+        },
+        timestamp: new Date().toISOString()
+      };
+      
+      // Save to localStorage
+      localStorage.setItem('lastAnalysis', JSON.stringify(analysisData));
+
+      // Save to MongoDB
       const response = await fetch('http://localhost:5000/api/upload/save-analysis', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
-        body: JSON.stringify({
-          resume: {
-            text: resumeText.trim(),
-            fileType: resumeFile?.type || 'text/plain',
-            fileName: resumeFile?.name || 'manual-input.txt'
-          },
-          jobDescription: {
-            text: jdText.trim(),
-            fileType: jdFile?.type || 'text/plain',
-            fileName: jdFile?.name || 'manual-input.txt'
-          }
-        }),
+        body: JSON.stringify(analysisData),
       });
       if (!response.ok) throw new Error('Failed to save analysis');
       sessionStorage.removeItem('resumeText');
