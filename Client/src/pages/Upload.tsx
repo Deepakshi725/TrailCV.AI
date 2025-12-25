@@ -182,7 +182,7 @@ export default function UploadPage() {
         formData.append('file', uploadedFile);
         
         // Call the API to extract text without saving to DB
-        const response = await fetch(`http://localhost:5000/api/upload/extract-text-only?type=${type}`, {
+        const response = await fetch(`http://localhost:5001/api/upload/extract-text-only?type=${type}`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -329,7 +329,7 @@ export default function UploadPage() {
       localStorage.setItem('lastAnalysis', JSON.stringify(analysisData));
 
       // Save to MongoDB
-      const response = await fetch('http://localhost:5000/api/upload/save-analysis', {
+      const response = await fetch('http://localhost:5001/api/upload/save-analysis', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

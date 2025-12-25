@@ -276,28 +276,22 @@ export default function RoadmapPage() {
             let retryCount = 0;
             // If not valid, try to get a new video for the same topic (up to 2 retries)
             while (!isValid && retryCount < 2) {
-              const retryPrompt = `Find a currently available YouTube video for the topic: '${resource.title}' or skill: '${resource.platform}'. Return a JSON object with title, creator, duration, platform, views, image, and url. Only return a video that is available now.`;
               try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.NEXT_PUBLIC_GEMINI_API_KEY}`,
+                const response = await fetch('http://localhost:5001/api/analysis/youtube-resources',
                   {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                      contents: [{ parts: [{ text: retryPrompt }] }]
+                      topic: resource.title || resource.platform
                     })
                   }
                 );
                 if (response.ok) {
-                  const data = await response.json();
-                  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-                  const jsonMatch = text.match(/\{[\s\S]*\}/);
-                  if (jsonMatch) {
-                    const newResource = JSON.parse(jsonMatch[0]);
-                    isValid = await isYouTubeVideoAvailable(newResource.url);
-                    if (isValid) {
-                      validFreeResources.push(newResource);
-                      break;
-                    }
+                  const newResource = await response.json();
+                  isValid = await isYouTubeVideoAvailable(newResource.url);
+                  if (isValid) {
+                    validFreeResources.push(newResource);
+                    break;
                   }
                 }
               } catch {}
